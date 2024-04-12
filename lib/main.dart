@@ -117,16 +117,18 @@ class WeatherPageState extends State<WeatherPage>
       _getLocationAndFetchWeather();
     } else if (status.isDenied) {
       // Handle the case when the user denies the permission
+      // ignore: use_build_context_synchronously
       showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text('Location Permission Denied'),
-            content: Text('Please grant location permission to use this app.'),
+            title: const Text('Location Permission Denied'),
+            content:
+                const Text('Please grant location permission to use this app.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: Text('OK'),
+                child: const Text('OK'),
               ),
             ],
           );
@@ -134,17 +136,18 @@ class WeatherPageState extends State<WeatherPage>
       );
     } else if (status.isPermanentlyDenied) {
       // Handle the case when the user permanently denies the permission
+      // ignore: use_build_context_synchronously
       showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text('Location Permission Denied'),
-            content: Text(
+            title: const Text('Location Permission Denied'),
+            content: const Text(
                 'Please enable location permissions in the device settings to use this app.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: Text('OK'),
+                child: const Text('OK'),
               ),
             ],
           );
@@ -204,29 +207,29 @@ class WeatherPageState extends State<WeatherPage>
     }
   }
 
- void updateWeatherIcon(int weatherCode) {
-  if (weatherCode >= 200 && weatherCode < 300) {
-    weatherIcon = Icons.flash_on; // Thunderstorm
-  } else if (weatherCode >= 300 && weatherCode < 400) {
-    weatherIcon = Icons.grain; // Drizzle
-  } else if (weatherCode >= 500 && weatherCode < 600) {
-    weatherIcon = Icons.grain; // Rain
-  } else if (weatherCode >= 600 && weatherCode < 700) {
-    weatherIcon = Icons.ac_unit; // Snow
-  } else if (weatherCode >= 700 && weatherCode < 800) {
-    weatherIcon = Icons.cloud_circle; // Atmosphere
-  } else if (weatherCode == 800) {
-    weatherIcon = Icons.wb_sunny; // Clear
-  } else if (weatherCode == 801) {
-    weatherIcon = Icons.wb_cloudy; // Few clouds
-  } else if (weatherCode == 802) {
-    weatherIcon = Icons.wb_cloudy; // Scattered clouds
-  } else if (weatherCode == 803 || weatherCode == 804) {
-    weatherIcon = Icons.cloud; // Broken clouds or overcast clouds
-  } else {
-    weatherIcon = Icons.error; // Other conditions
+  void updateWeatherIcon(int weatherCode) {
+    if (weatherCode >= 200 && weatherCode < 300) {
+      weatherIcon = Icons.flash_on; // Thunderstorm
+    } else if (weatherCode >= 300 && weatherCode < 400) {
+      weatherIcon = Icons.grain; // Drizzle
+    } else if (weatherCode >= 500 && weatherCode < 600) {
+      weatherIcon = Icons.grain; // Rain
+    } else if (weatherCode >= 600 && weatherCode < 700) {
+      weatherIcon = Icons.ac_unit; // Snow
+    } else if (weatherCode >= 700 && weatherCode < 800) {
+      weatherIcon = Icons.cloud_circle; // Atmosphere
+    } else if (weatherCode == 800) {
+      weatherIcon = Icons.wb_sunny; // Clear
+    } else if (weatherCode == 801) {
+      weatherIcon = Icons.wb_cloudy; // Few clouds
+    } else if (weatherCode == 802) {
+      weatherIcon = Icons.wb_cloudy; // Scattered clouds
+    } else if (weatherCode == 803 || weatherCode == 804) {
+      weatherIcon = Icons.cloud; // Broken clouds or overcast clouds
+    } else {
+      weatherIcon = Icons.error; // Other conditions
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -234,22 +237,29 @@ class WeatherPageState extends State<WeatherPage>
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: appBarHeight, // Use the animated height
+            expandedHeight: appBarHeight,
             flexibleSpace: Stack(
               children: [
                 AnimatedContainer(
-                  duration: Duration(milliseconds: 500),
-                  color: weatherData != null
-                      ? Colors.blue.withOpacity(0.8)
-                      : Colors.blue.withOpacity(0.4),
+                  duration: const Duration(milliseconds: 500),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.blue.withOpacity(0.8),
+                        Colors.blue.withOpacity(0.4),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
                 ),
                 Positioned(
                   bottom: 20.0,
                   left: 20.0,
                   child: AnimatedOpacity(
-                    duration: Duration(milliseconds: 500),
+                    duration: const Duration(milliseconds: 500),
                     opacity: weatherData != null ? 1.0 : 0.0,
-                    child: Text(
+                    child: const Text(
                       'Weather App',
                       style: TextStyle(
                         fontSize: 24.0,
@@ -264,7 +274,7 @@ class WeatherPageState extends State<WeatherPage>
                   right: 10.0,
                   child: RotationTransition(
                     turns: _animation,
-                    child: Icon(
+                    child: const Icon(
                       Icons.cloud,
                       color: Colors.white,
                       size: 100.0,
@@ -282,68 +292,98 @@ class WeatherPageState extends State<WeatherPage>
                   ? Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        TextField(
-                          controller: _cityController,
-                          decoration: InputDecoration(
-                            hintText: 'Enter city name',
-                            border: OutlineInputBorder(),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: TextField(
+                            controller: _cityController,
+                            decoration: const InputDecoration(
+                              hintText: 'Enter city name',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
                         ),
-                        SizedBox(height: 20),
+                        const SizedBox(height: 10),
                         ElevatedButton(
                           onPressed: () {
-                            fetchWeatherData(); // Fetch weather data when button is pressed
+                            fetchWeatherData();
                           },
-                          child: Text('Get Weather'),
+                          child: const Text('Get Weather'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20.0, vertical: 15.0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10.0),
+                            ),
+                            primary: Colors.blue,
+                          ),
                         ),
+                        const SizedBox(height: 20),
                         Text(
                           'City: $city',
-                          style: TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        SizedBox(height: 20),
-                        Icon(weatherIcon, size: 50, color: Colors.orange),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
+                        Icon(
+                          weatherIcon,
+                          size: 80,
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(height: 10),
                         Text(
                           'Temperature: ${weatherData!['main']['temp']}°C',
-                          style: TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.water_drop,
-                                size: 30, color: Colors.blue),
-                            SizedBox(width: 10),
+                            const Icon(
+                              Icons.water_drop,
+                              size: 30,
+                              color: Colors.blue,
+                            ),
+                            const SizedBox(width: 10),
                             Text(
                               'Humidity: ${weatherData!['main']['humidity']}%',
-                              style: TextStyle(fontSize: 20),
+                              style: const TextStyle(fontSize: 20),
                             ),
                           ],
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.thermostat, size: 30, color: Colors.red),
-                            SizedBox(width: 10),
+                            const Icon(
+                              Icons.thermostat,
+                              size: 30,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(width: 10),
                             Text(
                               'Max Temperature: ${weatherData!['main']['temp_max']}°C',
-                              style: TextStyle(fontSize: 20),
+                              style: const TextStyle(fontSize: 20),
                             ),
                           ],
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.thermostat,
-                                size: 30, color: Colors.blue),
-                            SizedBox(width: 10),
+                            const Icon(
+                              Icons.thermostat,
+                              size: 30,
+                              color: Colors.blue,
+                            ),
+                            const SizedBox(width: 10),
                             Text(
                               'Min Temperature: ${weatherData!['main']['temp_min']}°C',
-                              style: TextStyle(fontSize: 20),
+                              style: const TextStyle(fontSize: 20),
                             ),
                           ],
                         ),
