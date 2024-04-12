@@ -1,7 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class WeatherService {
   final String apiKey;
@@ -11,6 +12,19 @@ class WeatherService {
 
   Future<Map<String, dynamic>> getCurrentWeather(String city) async {
     final String url = '$baseUrl?q=$city&appid=$apiKey&units=metric';
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load weather data');
+    }
+  }
+
+  Future<Map<String, dynamic>> getCurrentLocationWeather(
+      {required double latitude, required double longitude}) async {
+    final String url =
+        '$baseUrl?lat=$latitude&lon=$longitude&appid=$apiKey&units=metric';
     final response = await http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
@@ -50,72 +64,295 @@ class WeatherPage extends StatefulWidget {
   WeatherPageState createState() => WeatherPageState();
 }
 
-class WeatherPageState extends State<WeatherPage> {
+class WeatherPageState extends State<WeatherPage>
+    with TickerProviderStateMixin {
   late WeatherService weatherService;
-  String city = 'bengaluru'; // Default city
+  String city = '';
   Map<String, dynamic>? weatherData;
+  IconData weatherIcon = Icons.wb_sunny;
+  double appBarHeight = 100.0;
+  bool _locationPermissionGranted = false;
+  TextEditingController _cityController = TextEditingController();
+
+  late AnimationController _controller;
+  late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
-    weatherService = WeatherService(widget.apiKey);
-    fetchWeatherData();
+    _requestLocationPermission(); // Request location permission
+    _initWeatherService();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+    _controller.repeat(reverse: true);
   }
 
-  void fetchWeatherData() async {
-    try {
-      var data = await weatherService.getCurrentWeather(city);
-      setState(() {
-        weatherData = data;
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error: $e');
-      }
+  void _initWeatherService() {
+    weatherService = WeatherService(widget.apiKey);
+    // Call fetchWeatherData only if location permission is granted
+    if (_locationPermissionGranted) {
+      fetchWeatherData();
     }
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _requestLocationPermission() async {
+    PermissionStatus status = await Permission.location.request();
+    if (status.isGranted) {
+      setState(() {
+        _locationPermissionGranted =
+            true; // Set _locationPermissionGranted to true
+      });
+      _getLocationAndFetchWeather();
+    } else if (status.isDenied) {
+      // Handle the case when the user denies the permission
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Location Permission Denied'),
+            content: Text('Please grant location permission to use this app.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    } else if (status.isPermanentlyDenied) {
+      // Handle the case when the user permanently denies the permission
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Location Permission Denied'),
+            content: Text(
+                'Please enable location permissions in the device settings to use this app.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  Future<void> _getLocationAndFetchWeather() async {
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      // Fetch weather data based on current location
+      fetchWeatherData(
+          latitude: position.latitude, longitude: position.longitude);
+    } catch (e) {
+      print('Error getting location: $e');
+    }
+  }
+
+  void fetchWeatherData({double? latitude, double? longitude}) async {
+    try {
+      var data;
+      if (latitude != null && longitude != null) {
+        // Fetch weather data based on provided latitude and longitude
+        data = await weatherService.getCurrentLocationWeather(
+            latitude: latitude, longitude: longitude);
+        setState(() {
+          weatherData = data;
+          updateWeatherIcon(data['weather'][0]['id']);
+          city = data['name']; // Assign the city name from the weather data
+        });
+      } else {
+        // Fetch weather data based on city name or current location
+        String cityName = _cityController.text.trim();
+        if (cityName.isNotEmpty) {
+          data = await weatherService.getCurrentWeather(cityName);
+          setState(() {
+            weatherData = data;
+            updateWeatherIcon(data['weather'][0]['id']);
+            city = cityName; // Assign the city name from the user input
+          });
+        } else {
+          Position position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high);
+          data = await weatherService.getCurrentLocationWeather(
+              latitude: position.latitude, longitude: position.longitude);
+          setState(() {
+            weatherData = data;
+            updateWeatherIcon(data['weather'][0]['id']);
+            city = data['name']; // Assign the city name from the weather data
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching weather data: $e');
+    }
+  }
+
+ void updateWeatherIcon(int weatherCode) {
+  if (weatherCode >= 200 && weatherCode < 300) {
+    weatherIcon = Icons.flash_on; // Thunderstorm
+  } else if (weatherCode >= 300 && weatherCode < 400) {
+    weatherIcon = Icons.grain; // Drizzle
+  } else if (weatherCode >= 500 && weatherCode < 600) {
+    weatherIcon = Icons.grain; // Rain
+  } else if (weatherCode >= 600 && weatherCode < 700) {
+    weatherIcon = Icons.ac_unit; // Snow
+  } else if (weatherCode >= 700 && weatherCode < 800) {
+    weatherIcon = Icons.cloud_circle; // Atmosphere
+  } else if (weatherCode == 800) {
+    weatherIcon = Icons.wb_sunny; // Clear
+  } else if (weatherCode == 801) {
+    weatherIcon = Icons.wb_cloudy; // Few clouds
+  } else if (weatherCode == 802) {
+    weatherIcon = Icons.wb_cloudy; // Scattered clouds
+  } else if (weatherCode == 803 || weatherCode == 804) {
+    weatherIcon = Icons.cloud; // Broken clouds or overcast clouds
+  } else {
+    weatherIcon = Icons.error; // Other conditions
+  }
+}
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Weather App')),
-      body: Center(
-        child: weatherData != null
-            ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'City: $city',
-                    style: const TextStyle(fontSize: 24),
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: appBarHeight, // Use the animated height
+            flexibleSpace: Stack(
+              children: [
+                AnimatedContainer(
+                  duration: Duration(milliseconds: 500),
+                  color: weatherData != null
+                      ? Colors.blue.withOpacity(0.8)
+                      : Colors.blue.withOpacity(0.4),
+                ),
+                Positioned(
+                  bottom: 20.0,
+                  left: 20.0,
+                  child: AnimatedOpacity(
+                    duration: Duration(milliseconds: 500),
+                    opacity: weatherData != null ? 1.0 : 0.0,
+                    child: Text(
+                      'Weather App',
+                      style: TextStyle(
+                        fontSize: 24.0,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Temperature: ${weatherData!['main']['temp']}°C',
-                    style: const TextStyle(fontSize: 20),
+                ),
+                Positioned(
+                  top: 10.0,
+                  right: 10.0,
+                  child: RotationTransition(
+                    turns: _animation,
+                    child: Icon(
+                      Icons.cloud,
+                      color: Colors.white,
+                      size: 100.0,
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Description: ${weatherData!['weather'][0]['description']}',
-                    style: const TextStyle(fontSize: 20),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Humidity: ${weatherData!['main']['humidity']}%',
-                    style: const TextStyle(fontSize: 20),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Max Temperature: ${weatherData!['main']['temp_max']}°C',
-                    style: const TextStyle(fontSize: 20),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Min Temperature: ${weatherData!['main']['temp_min']}°C',
-                    style: TextStyle(fontSize: 20),
-                  ),
-                ],
-              )
-            : const Text('Fetching weather data...'),
+                ),
+              ],
+            ),
+            floating: true,
+            pinned: true,
+          ),
+          SliverFillRemaining(
+            child: Center(
+              child: weatherData != null
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextField(
+                          controller: _cityController,
+                          decoration: InputDecoration(
+                            hintText: 'Enter city name',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed: () {
+                            fetchWeatherData(); // Fetch weather data when button is pressed
+                          },
+                          child: Text('Get Weather'),
+                        ),
+                        Text(
+                          'City: $city',
+                          style: TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 20),
+                        Icon(weatherIcon, size: 50, color: Colors.orange),
+                        SizedBox(height: 10),
+                        Text(
+                          'Temperature: ${weatherData!['main']['temp']}°C',
+                          style: TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.water_drop,
+                                size: 30, color: Colors.blue),
+                            SizedBox(width: 10),
+                            Text(
+                              'Humidity: ${weatherData!['main']['humidity']}%',
+                              style: TextStyle(fontSize: 20),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.thermostat, size: 30, color: Colors.red),
+                            SizedBox(width: 10),
+                            Text(
+                              'Max Temperature: ${weatherData!['main']['temp_max']}°C',
+                              style: TextStyle(fontSize: 20),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.thermostat,
+                                size: 30, color: Colors.blue),
+                            SizedBox(width: 10),
+                            Text(
+                              'Min Temperature: ${weatherData!['main']['temp_min']}°C',
+                              style: TextStyle(fontSize: 20),
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                  : const Text('Fetching weather data...'),
+            ),
+          ),
+        ],
       ),
     );
   }
