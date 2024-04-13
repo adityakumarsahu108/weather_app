@@ -75,7 +75,6 @@ class WeatherPageState extends State<WeatherPage>
   TextEditingController _cityController = TextEditingController();
 
   late AnimationController _controller;
-  late Animation<double> _animation;
 
   @override
   void initState() {
@@ -86,10 +85,7 @@ class WeatherPageState extends State<WeatherPage>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    _animation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    );
+
     _controller.repeat(reverse: true);
   }
 
@@ -237,53 +233,28 @@ class WeatherPageState extends State<WeatherPage>
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: appBarHeight,
             flexibleSpace: Stack(
               children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.blue.withOpacity(0.8),
-                        Colors.blue.withOpacity(0.4),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                ),
                 Positioned(
-                  bottom: 20.0,
-                  left: 20.0,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 500),
+                  child: Opacity(
                     opacity: weatherData != null ? 1.0 : 0.0,
-                    child: const Text(
-                      'Weather App',
-                      style: TextStyle(
-                        fontSize: 24.0,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    child: const Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(top: 20),
+                        child: Text(
+                          'Weather App',
+                          style: TextStyle(
+                            fontSize: 30.0,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 10.0,
-                  right: 10.0,
-                  child: RotationTransition(
-                    turns: _animation,
-                    child: const Icon(
-                      Icons.cloud,
-                      color: Colors.white,
-                      size: 100.0,
                     ),
                   ),
                 ),
               ],
             ),
-            floating: true,
             pinned: true,
           ),
           SliverFillRemaining(
@@ -307,15 +278,15 @@ class WeatherPageState extends State<WeatherPage>
                           onPressed: () {
                             fetchWeatherData();
                           },
-                          child: const Text('Get Weather'),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 20.0, vertical: 15.0),
+                            backgroundColor: Colors.blue,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10.0),
                             ),
-                            primary: Colors.blue,
                           ),
+                          child: const Text('Get Weather'),
                         ),
                         const SizedBox(height: 20),
                         Text(
